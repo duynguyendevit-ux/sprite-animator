@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sprite Sheet Animator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: white;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        h1 {
+            font-size: 3em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .subtitle {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .panel {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+        }
+
+        .panel h2 {
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+
+        .upload-area {
+            border: 3px dashed rgba(255,255,255,0.5);
+            border-radius: 15px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 20px;
+        }
+
+        .upload-area:hover {
+            border-color: white;
+            background: rgba(255,255,255,0.1);
+        }
+
+        .upload-area.dragover {
+            border-color: #f093fb;
+            background: rgba(240, 147, 251, 0.2);
+        }
+
+        .upload-icon {
+            font-size: 4em;
+            margin-bottom: 15px;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .canvas-container {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            min-height: 400px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        canvas {
+            border: 2px solid #667eea;
+            border-radius: 10px;
+            max-width: 100%;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
+
+        .config-group {
+            margin-bottom: 20px;
+        }
+
+        .config-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+
+        input[type="number"] {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            background: rgba(255,255,255,0.9);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        button {
+            flex: 1;
+            min-width: 120px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            font-size: 1em;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button.active {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .slider-group {
+            margin-bottom: 20px;
+        }
+
+        .slider-group label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 8px;
+            border-radius: 5px;
+            background: rgba(255,255,255,0.3);
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: white;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: white;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        .info-box {
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 20px;
+            font-size: 0.9em;
+        }
+
+        .info-box p {
+            margin-bottom: 8px;
+        }
+
+        .preview-info {
+            background: rgba(255,255,255,0.2);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .preview-info p {
+            margin-bottom: 5px;
+        }
+
+        @media (max-width: 968px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+
+            h1 {
+                font-size: 2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎮 Sprite Sheet Animator</h1>
+            <p class="subtitle">Upload and animate your sprite sheets</p>
+        </header>
+
+        <div class="main-content">
+            <!-- Left Panel: Upload & Config -->
+            <div class="panel">
+                <h2>📤 Upload Sprite Sheet</h2>
+                
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon">📁</div>
+                    <p><strong>Click to upload</strong> or drag & drop</p>
+                    <p style="opacity: 0.7; margin-top: 10px;">PNG, JPG, GIF supported</p>
+                </div>
+                <input type="file" id="fileInput" accept="image/*">
+
+                <div class="config-group">
+                    <label>Columns (frames per row):</label>
+                    <input type="number" id="colsInput" value="4" min="1" max="20">
+                </div>
+
+                <div class="config-group">
+                    <label>Rows:</label>
+                    <input type="number" id="rowsInput" value="4" min="1" max="20">
+                </div>
+
+                <div class="config-group">
+                    <label>Start Frame:</label>
+                    <input type="number" id="startFrameInput" value="0" min="0">
+                </div>
+
+                <div class="config-group">
+                    <label>End Frame:</label>
+                    <input type="number" id="endFrameInput" value="7" min="0">
+                </div>
+
+                <button id="applyConfigBtn" disabled>Apply Configuration</button>
+
+                <div class="info-box">
+                    <p><strong>💡 Tips:</strong></p>
+                    <p>• Set columns/rows to match your sprite sheet grid</p>
+                    <p>• Use start/end frame to select animation range</p>
+                    <p>• Example: Frames 0-7 for walk, 8-15 for run</p>
+                </div>
+            </div>
+
+            <!-- Right Panel: Preview & Controls -->
+            <div class="panel">
+                <h2>🎬 Animation Preview</h2>
+
+                <div id="previewInfo" class="preview-info" style="display: none;">
+                    <p><strong>Image:</strong> <span id="imageName">-</span></p>
+                    <p><strong>Size:</strong> <span id="imageSize">-</span></p>
+                    <p><strong>Frame Size:</strong> <span id="frameSize">-</span></p>
+                    <p><strong>Total Frames:</strong> <span id="totalFrames">-</span></p>
+                </div>
+
+                <div class="canvas-container">
+                    <canvas id="spriteCanvas" width="400" height="400"></canvas>
+                </div>
+
+                <div class="button-group" style="margin-top: 20px;">
+                    <button id="playBtn" disabled>▶️ Play</button>
+                    <button id="pauseBtn" disabled>⏸️ Pause</button>
+                    <button id="resetBtn" disabled>🔄 Reset</button>
+                </div>
+
+                <div class="slider-group">
+                    <label>
+                        <span>Speed:</span>
+                        <span id="speedValue">10 FPS</span>
+                    </label>
+                    <input type="range" id="speedSlider" min="1" max="30" value="10">
+                </div>
+
+                <div class="slider-group">
+                    <label>
+                        <span>Scale:</span>
+                        <span id="scaleValue">2x</span>
+                    </label>
+                    <input type="range" id="scaleSlider" min="1" max="5" value="2" step="0.5">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('spriteCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let spriteSheet = null;
+        let cols = 4;
+        let rows = 4;
+        let startFrame = 0;
+        let endFrame = 7;
+        let frameWidth = 0;
+        let frameHeight = 0;
+        let currentFrame = 0;
+        let isPlaying = false;
+        let fps = 10;
+        let scale = 2;
+        let lastFrameTime = 0;
+        let animationId = null;
+
+        // Upload handling
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+
+        uploadArea.addEventListener('click', () => fileInput.click());
+
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) {
+                loadImage(file);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                loadImage(file);
+            }
+        });
+
+        function loadImage(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                spriteSheet = new Image();
+                spriteSheet.onload = () => {
+                    updateConfig();
+                    document.getElementById('applyConfigBtn').disabled = false;
+                    document.getElementById('playBtn').disabled = false;
+                    document.getElementById('pauseBtn').disabled = false;
+                    document.getElementById('resetBtn').disabled = false;
+                    
+                    // Update info
+                    document.getElementById('previewInfo').style.display = 'block';
+                    document.getElementById('imageName').textContent = file.name;
+                    document.getElementById('imageSize').textContent = `${spriteSheet.width}x${spriteSheet.height}px`;
+                    
+                    drawFrame();
+                };
+                spriteSheet.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function updateConfig() {
+            cols = parseInt(document.getElementById('colsInput').value);
+            rows = parseInt(document.getElementById('rowsInput').value);
+            startFrame = parseInt(document.getElementById('startFrameInput').value);
+            endFrame = parseInt(document.getElementById('endFrameInput').value);
+            
+            if (spriteSheet) {
+                frameWidth = spriteSheet.width / cols;
+                frameHeight = spriteSheet.height / rows;
+                
+                const totalFrames = cols * rows;
+                document.getElementById('frameSize').textContent = `${Math.floor(frameWidth)}x${Math.floor(frameHeight)}px`;
+                document.getElementById('totalFrames').textContent = totalFrames;
+                document.getElementById('endFrameInput').max = totalFrames - 1;
+                
+                currentFrame = startFrame;
+                drawFrame();
+            }
+        }
+
+        function getFramePosition(frameIndex) {
+            const col = frameIndex % cols;
+            const row = Math.floor(frameIndex / cols);
+            return {
+                x: col * frameWidth,
+                y: row * frameHeight
+            };
+        }
+
+        function drawFrame() {
+            if (!spriteSheet) return;
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            const pos = getFramePosition(currentFrame);
+            const drawWidth = frameWidth * scale;
+            const drawHeight = frameHeight * scale;
+            const x = (canvas.width - drawWidth) / 2;
+            const y = (canvas.height - drawHeight) / 2;
+            
+            ctx.drawImage(
+                spriteSheet,
+                pos.x, pos.y,
+                frameWidth, frameHeight,
+                x, y,
+                drawWidth, drawHeight
+            );
+        }
+
+        function animate(timestamp = 0) {
+            if (!isPlaying) return;
+            
+            animationId = requestAnimationFrame(animate);
+            
+            const frameDelay = 1000 / fps;
+            if (timestamp - lastFrameTime < frameDelay) return;
+            
+            lastFrameTime = timestamp;
+            
+            currentFrame++;
+            if (currentFrame > endFrame) {
+                currentFrame = startFrame;
+            }
+            
+            drawFrame();
+        }
+
+        // Controls
+        document.getElementById('applyConfigBtn').addEventListener('click', updateConfig);
+
+        document.getElementById('playBtn').addEventListener('click', () => {
+            isPlaying = true;
+            animate();
+        });
+
+        document.getElementById('pauseBtn').addEventListener('click', () => {
+            isPlaying = false;
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+            }
+        });
+
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            isPlaying = false;
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+            }
+            currentFrame = startFrame;
+            drawFrame();
+        });
+
+        document.getElementById('speedSlider').addEventListener('input', function() {
+            fps = parseInt(this.value);
+            document.getElementById('speedValue').textContent = fps + ' FPS';
+        });
+
+        document.getElementById('scaleSlider').addEventListener('input', function() {
+            scale = parseFloat(this.value);
+            document.getElementById('scaleValue').textContent = scale + 'x';
+            drawFrame();
+        });
+
+        // Update config inputs
+        ['colsInput', 'rowsInput', 'startFrameInput', 'endFrameInput'].forEach(id => {
+            document.getElementById(id).addEventListener('change', () => {
+                if (spriteSheet) {
+                    document.getElementById('applyConfigBtn').disabled = false;
+                }
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+{
+  "name": "sprite-animator",
+  "version": "1.0.0",
+  "description": "Upload and animate sprite sheets",
+  "main": "index.html",
+  "scripts": {
+    "dev": "npx serve .",
+    "build": "echo 'Static site, no build needed'"
+  },
+  "keywords": ["sprite", "animation", "game", "2d"],
+  "author": "Duy Nguyen",
+  "license": "MIT"
+}
