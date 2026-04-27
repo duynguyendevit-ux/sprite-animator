@@ -616,6 +616,24 @@
                     <label for="reverseCheckbox">Reverse Playback</label>
                 </div>
 
+                <div class="checkbox-group">
+                    <input type="checkbox" id="onionSkinCheckbox">
+                    <label for="onionSkinCheckbox">Onion Skinning</label>
+                </div>
+
+                <div class="slider-group" id="onionOpacityGroup" style="display: none;">
+                    <label>
+                        <span>Onion Opacity</span>
+                        <span class="slider-value" id="onionOpacityValue">30%</span>
+                    </label>
+                    <input type="range" id="onionOpacitySlider" min="10" max="80" value="30">
+                </div>
+
+                <div class="config-group" style="margin-top: 20px;">
+                    <label>Loop Count (0 = infinite):</label>
+                    <input type="number" id="loopCountInput" value="0" min="0" max="100">
+                </div>
+
                 <div class="info-box">
                     <p><strong>Tips:</strong></p>
                     <p>• Set columns/rows to match your sprite sheet grid</p>
@@ -670,6 +688,37 @@
                         <span class="slider-value" id="scaleValue">1×</span>
                     </label>
                     <input type="range" id="scaleSlider" min="1" max="5" value="1" step="0.5">
+                </div>
+
+                <div class="button-group">
+                    <button id="zoom50Btn" class="secondary" disabled>50%</button>
+                    <button id="zoom100Btn" class="secondary" disabled>100%</button>
+                    <button id="zoom200Btn" class="secondary" disabled>200%</button>
+                    <button id="zoomFitBtn" class="secondary" disabled>Fit</button>
+                </div>
+
+                <div class="slider-group">
+                    <label>
+                        <span>Brightness</span>
+                        <span class="slider-value" id="brightnessValue">100%</span>
+                    </label>
+                    <input type="range" id="brightnessSlider" min="0" max="200" value="100">
+                </div>
+
+                <div class="slider-group">
+                    <label>
+                        <span>Contrast</span>
+                        <span class="slider-value" id="contrastValue">100%</span>
+                    </label>
+                    <input type="range" id="contrastSlider" min="0" max="200" value="100">
+                </div>
+
+                <div class="slider-group">
+                    <label>
+                        <span>Saturation</span>
+                        <span class="slider-value" id="saturationValue">100%</span>
+                    </label>
+                    <input type="range" id="saturationSlider" min="0" max="200" value="100">
                 </div>
 
                 <div class="keyboard-hint">
@@ -734,6 +783,13 @@
         let bgColor = '#09090b';
         let showGrid = false;
         let reversePlayback = false;
+        let onionSkinning = false;
+        let onionOpacity = 0.3;
+        let loopCount = 0;
+        let currentLoop = 0;
+        let brightness = 100;
+        let contrast = 100;
+        let saturation = 100;
 
         // Upload handling
         const uploadArea = document.getElementById('uploadArea');
@@ -795,6 +851,10 @@
             document.getElementById('nextFrameBtn').disabled = false;
             document.getElementById('downloadFrameBtn').disabled = false;
             document.getElementById('exportGifBtn').disabled = false;
+            document.getElementById('zoom50Btn').disabled = false;
+            document.getElementById('zoom100Btn').disabled = false;
+            document.getElementById('zoom200Btn').disabled = false;
+            document.getElementById('zoomFitBtn').disabled = false;
         }
 
         function updateConfig() {
@@ -844,12 +904,30 @@
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
             }
             
-            const pos = getFramePosition(currentFrame);
             const drawWidth = frameWidth * scale;
             const drawHeight = frameHeight * scale;
             const x = (canvas.width - drawWidth) / 2;
             const y = (canvas.height - drawHeight) / 2;
+
+            // Apply filters
+            ctx.filter = `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%)`;
             
+            // Draw onion skin (previous frame)
+            if (onionSkinning && currentFrame > startFrame) {
+                ctx.globalAlpha = onionOpacity;
+                const prevPos = getFramePosition(currentFrame - 1);
+                ctx.drawImage(
+                    spriteSheet,
+                    prevPos.x, prevPos.y,
+                    frameWidth, frameHeight,
+                    x, y,
+                    drawWidth, drawHeight
+                );
+                ctx.globalAlpha = 1.0;
+            }
+            
+            // Draw current frame
+            const pos = getFramePosition(currentFrame);
             ctx.drawImage(
                 spriteSheet,
                 pos.x, pos.y,
@@ -857,6 +935,23 @@
                 x, y,
                 drawWidth, drawHeight
             );
+
+            // Draw onion skin (next frame)
+            if (onionSkinning && currentFrame < endFrame) {
+                ctx.globalAlpha = onionOpacity;
+                const nextPos = getFramePosition(currentFrame + 1);
+                ctx.drawImage(
+                    spriteSheet,
+                    nextPos.x, nextPos.y,
+                    frameWidth, frameHeight,
+                    x, y,
+                    drawWidth, drawHeight
+                );
+                ctx.globalAlpha = 1.0;
+            }
+
+            // Reset filter
+            ctx.filter = 'none';
 
             // Draw grid overlay
             if (showGrid) {
@@ -882,11 +977,23 @@
                 currentFrame--;
                 if (currentFrame < startFrame) {
                     currentFrame = endFrame;
+                    currentLoop++;
+                    if (loopCount > 0 && currentLoop >= loopCount) {
+                        isPlaying = false;
+                        currentLoop = 0;
+                        return;
+                    }
                 }
             } else {
                 currentFrame++;
                 if (currentFrame > endFrame) {
                     currentFrame = startFrame;
+                    currentLoop++;
+                    if (loopCount > 0 && currentLoop >= loopCount) {
+                        isPlaying = false;
+                        currentLoop = 0;
+                        return;
+                    }
                 }
             }
             
@@ -1041,6 +1148,76 @@
 
         document.getElementById('reverseCheckbox').addEventListener('change', function() {
             reversePlayback = this.checked;
+        });
+
+        // Onion skinning controls
+        document.getElementById('onionSkinCheckbox').addEventListener('change', function() {
+            onionSkinning = this.checked;
+            document.getElementById('onionOpacityGroup').style.display = this.checked ? 'block' : 'none';
+            drawFrame();
+        });
+
+        document.getElementById('onionOpacitySlider').addEventListener('input', function() {
+            onionOpacity = parseInt(this.value) / 100;
+            document.getElementById('onionOpacityValue').textContent = this.value + '%';
+            drawFrame();
+        });
+
+        // Loop count control
+        document.getElementById('loopCountInput').addEventListener('change', function() {
+            loopCount = parseInt(this.value);
+            currentLoop = 0;
+        });
+
+        // Zoom controls
+        document.getElementById('zoom50Btn').addEventListener('click', () => {
+            scale = 0.5;
+            document.getElementById('scaleSlider').value = 0.5;
+            document.getElementById('scaleValue').textContent = '0.5×';
+            drawFrame();
+        });
+
+        document.getElementById('zoom100Btn').addEventListener('click', () => {
+            scale = 1;
+            document.getElementById('scaleSlider').value = 1;
+            document.getElementById('scaleValue').textContent = '1×';
+            drawFrame();
+        });
+
+        document.getElementById('zoom200Btn').addEventListener('click', () => {
+            scale = 2;
+            document.getElementById('scaleSlider').value = 2;
+            document.getElementById('scaleValue').textContent = '2×';
+            drawFrame();
+        });
+
+        document.getElementById('zoomFitBtn').addEventListener('click', () => {
+            if (!spriteSheet) return;
+            const scaleX = canvas.width / frameWidth;
+            const scaleY = canvas.height / frameHeight;
+            scale = Math.min(scaleX, scaleY) * 0.9;
+            document.getElementById('scaleSlider').value = scale;
+            document.getElementById('scaleValue').textContent = scale.toFixed(1) + '×';
+            drawFrame();
+        });
+
+        // Filter controls
+        document.getElementById('brightnessSlider').addEventListener('input', function() {
+            brightness = parseInt(this.value);
+            document.getElementById('brightnessValue').textContent = this.value + '%';
+            drawFrame();
+        });
+
+        document.getElementById('contrastSlider').addEventListener('input', function() {
+            contrast = parseInt(this.value);
+            document.getElementById('contrastValue').textContent = this.value + '%';
+            drawFrame();
+        });
+
+        document.getElementById('saturationSlider').addEventListener('input', function() {
+            saturation = parseInt(this.value);
+            document.getElementById('saturationValue').textContent = this.value + '%';
+            drawFrame();
         });
 
         // Keyboard shortcuts
