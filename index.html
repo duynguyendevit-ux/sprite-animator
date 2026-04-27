@@ -535,7 +535,7 @@
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.js"></script>
+    <script src="https://unpkg.com/gifshot@0.4.5/dist/gifshot.min.js"></script>
     <script>
         const canvas = document.getElementById('spriteCanvas');
         const ctx = canvas.getContext('2d');
@@ -761,20 +761,15 @@
         function exportGif() {
             if (!spriteSheet) return;
 
-            const gif = new GIF({
-                workers: 2,
-                quality: 10,
-                width: frameWidth,
-                height: frameHeight,
-                transparent: bgColor === 'transparent' ? 0x000000 : null
-            });
+            const exportBtn = document.getElementById('exportGifBtn');
+            exportBtn.disabled = true;
+            exportBtn.textContent = '⏳ Exporting...';
 
+            const images = [];
             const tempCanvas = document.createElement('canvas');
             tempCanvas.width = frameWidth;
             tempCanvas.height = frameHeight;
             const tempCtx = tempCanvas.getContext('2d');
-
-            const delay = 1000 / fps;
 
             for (let i = startFrame; i <= endFrame; i++) {
                 const pos = getFramePosition(i);
@@ -794,19 +789,26 @@
                     frameWidth, frameHeight
                 );
 
-                gif.addFrame(tempCtx, { copy: true, delay: delay });
+                images.push(tempCanvas.toDataURL('image/png'));
             }
 
-            gif.on('finished', (blob) => {
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = 'animation.gif';
-                a.click();
-                URL.revokeObjectURL(url);
+            gifshot.createGIF({
+                images: images,
+                gifWidth: frameWidth,
+                gifHeight: frameHeight,
+                interval: 1 / fps,
+                numFrames: images.length,
+                frameDuration: 1,
+            }, function(obj) {
+                if (!obj.error) {
+                    const a = document.createElement('a');
+                    a.href = obj.image;
+                    a.download = 'animation.gif';
+                    a.click();
+                }
+                exportBtn.disabled = false;
+                exportBtn.textContent = '🎬 Export GIF';
             });
-
-            gif.render();
         }
 
         // Controls
