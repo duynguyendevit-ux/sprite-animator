@@ -119,8 +119,10 @@
             text-align: center;
             min-height: 400px;
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
+            position: relative;
         }
 
         canvas {
@@ -129,6 +131,13 @@
             max-width: 100%;
             image-rendering: pixelated;
             image-rendering: crisp-edges;
+        }
+
+        .frame-counter {
+            margin-top: 12px;
+            font-size: 0.875em;
+            color: #a78bfa;
+            font-weight: 600;
         }
 
         .config-group {
@@ -143,7 +152,7 @@
             color: #fafafa;
         }
 
-        input[type="number"] {
+        input[type="number"], input[type="color"] {
             width: 100%;
             padding: 10px 12px;
             border: 1px solid #27272a;
@@ -155,7 +164,12 @@
             transition: all 0.2s ease;
         }
 
-        input[type="number"]:focus {
+        input[type="color"] {
+            height: 40px;
+            cursor: pointer;
+        }
+
+        input[type="number"]:focus, input[type="color"]:focus {
             outline: none;
             border-color: #a78bfa;
             box-shadow: 0 0 0 2px rgba(167, 139, 250, 0.1);
@@ -209,6 +223,15 @@
         button.secondary:hover {
             background: #0c0c0f;
             border-color: #a78bfa;
+        }
+
+        button.success {
+            background: #34d399;
+            color: #09090b;
+        }
+
+        button.success:hover {
+            background: #4ade80;
         }
 
         button:focus-visible {
@@ -331,12 +354,44 @@
             font-weight: 500;
         }
 
-        .success {
-            color: #34d399;
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 16px;
         }
 
-        .error {
-            color: #ef4444;
+        .checkbox-group input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: #a78bfa;
+        }
+
+        .checkbox-group label {
+            font-size: 0.875em;
+            font-weight: 500;
+            cursor: pointer;
+            margin: 0;
+        }
+
+        .keyboard-hint {
+            background: #0c0c0f;
+            border: 1px solid #27272a;
+            border-radius: 6px;
+            padding: 12px;
+            margin-top: 16px;
+            font-size: 0.75em;
+            color: #a1a1aa;
+        }
+
+        .keyboard-hint kbd {
+            background: #27272a;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Geist', monospace;
+            color: #fafafa;
+            font-size: 0.9em;
         }
 
         @media (max-width: 968px) {
@@ -399,6 +454,21 @@
 
                 <button id="applyConfigBtn" disabled>Apply Configuration</button>
 
+                <div class="config-group" style="margin-top: 20px;">
+                    <label>Canvas Background:</label>
+                    <input type="color" id="bgColorInput" value="#09090b">
+                </div>
+
+                <div class="checkbox-group">
+                    <input type="checkbox" id="showGridCheckbox">
+                    <label for="showGridCheckbox">Show Grid Overlay</label>
+                </div>
+
+                <div class="checkbox-group">
+                    <input type="checkbox" id="reverseCheckbox">
+                    <label for="reverseCheckbox">Reverse Playback</label>
+                </div>
+
                 <div class="info-box">
                     <p><strong>Tips:</strong></p>
                     <p>• Set columns/rows to match your sprite sheet grid</p>
@@ -420,12 +490,23 @@
 
                 <div class="canvas-container">
                     <canvas id="spriteCanvas" width="400" height="400"></canvas>
+                    <div class="frame-counter" id="frameCounter">Frame 0 / 0</div>
                 </div>
 
                 <div class="button-group" style="margin-top: 20px;">
                     <button id="playBtn" disabled>▶ Play</button>
                     <button id="pauseBtn" class="secondary" disabled>⏸ Pause</button>
                     <button id="resetBtn" class="secondary" disabled>↻ Reset</button>
+                </div>
+
+                <div class="button-group">
+                    <button id="prevFrameBtn" class="secondary" disabled>← Prev</button>
+                    <button id="nextFrameBtn" class="secondary" disabled>Next →</button>
+                </div>
+
+                <div class="button-group">
+                    <button id="downloadFrameBtn" class="success" disabled>💾 Download Frame</button>
+                    <button id="exportGifBtn" class="success" disabled>🎬 Export GIF</button>
                 </div>
 
                 <div class="slider-group">
@@ -443,10 +524,18 @@
                     </label>
                     <input type="range" id="scaleSlider" min="1" max="5" value="1" step="0.5">
                 </div>
+
+                <div class="keyboard-hint">
+                    <strong>Keyboard Shortcuts:</strong> 
+                    <kbd>Space</kbd> Play/Pause • 
+                    <kbd>←</kbd><kbd>→</kbd> Prev/Next Frame • 
+                    <kbd>R</kbd> Reset
+                </div>
             </div>
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.js"></script>
     <script>
         const canvas = document.getElementById('spriteCanvas');
         const ctx = canvas.getContext('2d');
@@ -464,6 +553,9 @@
         let scale = 1;
         let lastFrameTime = 0;
         let animationId = null;
+        let bgColor = '#09090b';
+        let showGrid = false;
+        let reversePlayback = false;
 
         // Upload handling
         const uploadArea = document.getElementById('uploadArea');
@@ -502,10 +594,7 @@
                 spriteSheet = new Image();
                 spriteSheet.onload = () => {
                     updateConfig();
-                    document.getElementById('applyConfigBtn').disabled = false;
-                    document.getElementById('playBtn').disabled = false;
-                    document.getElementById('pauseBtn').disabled = false;
-                    document.getElementById('resetBtn').disabled = false;
+                    enableControls();
                     
                     // Update info
                     document.getElementById('previewInfo').style.display = 'block';
@@ -517,6 +606,17 @@
                 spriteSheet.src = e.target.result;
             };
             reader.readAsDataURL(file);
+        }
+
+        function enableControls() {
+            document.getElementById('applyConfigBtn').disabled = false;
+            document.getElementById('playBtn').disabled = false;
+            document.getElementById('pauseBtn').disabled = false;
+            document.getElementById('resetBtn').disabled = false;
+            document.getElementById('prevFrameBtn').disabled = false;
+            document.getElementById('nextFrameBtn').disabled = false;
+            document.getElementById('downloadFrameBtn').disabled = false;
+            document.getElementById('exportGifBtn').disabled = false;
         }
 
         function updateConfig() {
@@ -535,6 +635,7 @@
                 document.getElementById('endFrameInput').max = totalFrames - 1;
                 
                 currentFrame = startFrame;
+                updateFrameCounter();
                 drawFrame();
             }
         }
@@ -548,11 +649,22 @@
             };
         }
 
+        function updateFrameCounter() {
+            const total = endFrame - startFrame + 1;
+            const current = currentFrame - startFrame + 1;
+            document.getElementById('frameCounter').textContent = `Frame ${current} / ${total}`;
+        }
+
         function drawFrame() {
             if (!spriteSheet) return;
             
-            // Clear canvas with transparency
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            // Clear or fill background
+            if (bgColor === 'transparent') {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+            } else {
+                ctx.fillStyle = bgColor;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
             
             const pos = getFramePosition(currentFrame);
             const drawWidth = frameWidth * scale;
@@ -567,6 +679,15 @@
                 x, y,
                 drawWidth, drawHeight
             );
+
+            // Draw grid overlay
+            if (showGrid) {
+                ctx.strokeStyle = '#a78bfa';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(x, y, drawWidth, drawHeight);
+            }
+
+            updateFrameCounter();
         }
 
         function animate(timestamp = 0) {
@@ -579,12 +700,113 @@
             
             lastFrameTime = timestamp;
             
+            if (reversePlayback) {
+                currentFrame--;
+                if (currentFrame < startFrame) {
+                    currentFrame = endFrame;
+                }
+            } else {
+                currentFrame++;
+                if (currentFrame > endFrame) {
+                    currentFrame = startFrame;
+                }
+            }
+            
+            drawFrame();
+        }
+
+        function nextFrame() {
             currentFrame++;
             if (currentFrame > endFrame) {
                 currentFrame = startFrame;
             }
-            
             drawFrame();
+        }
+
+        function prevFrame() {
+            currentFrame--;
+            if (currentFrame < startFrame) {
+                currentFrame = endFrame;
+            }
+            drawFrame();
+        }
+
+        function downloadFrame() {
+            if (!spriteSheet) return;
+
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = frameWidth;
+            tempCanvas.height = frameHeight;
+            const tempCtx = tempCanvas.getContext('2d');
+
+            const pos = getFramePosition(currentFrame);
+            tempCtx.drawImage(
+                spriteSheet,
+                pos.x, pos.y,
+                frameWidth, frameHeight,
+                0, 0,
+                frameWidth, frameHeight
+            );
+
+            tempCanvas.toBlob((blob) => {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `frame-${currentFrame}.png`;
+                a.click();
+                URL.revokeObjectURL(url);
+            });
+        }
+
+        function exportGif() {
+            if (!spriteSheet) return;
+
+            const gif = new GIF({
+                workers: 2,
+                quality: 10,
+                width: frameWidth,
+                height: frameHeight,
+                transparent: bgColor === 'transparent' ? 0x000000 : null
+            });
+
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = frameWidth;
+            tempCanvas.height = frameHeight;
+            const tempCtx = tempCanvas.getContext('2d');
+
+            const delay = 1000 / fps;
+
+            for (let i = startFrame; i <= endFrame; i++) {
+                const pos = getFramePosition(i);
+                
+                if (bgColor !== 'transparent') {
+                    tempCtx.fillStyle = bgColor;
+                    tempCtx.fillRect(0, 0, frameWidth, frameHeight);
+                } else {
+                    tempCtx.clearRect(0, 0, frameWidth, frameHeight);
+                }
+
+                tempCtx.drawImage(
+                    spriteSheet,
+                    pos.x, pos.y,
+                    frameWidth, frameHeight,
+                    0, 0,
+                    frameWidth, frameHeight
+                );
+
+                gif.addFrame(tempCtx, { copy: true, delay: delay });
+            }
+
+            gif.on('finished', (blob) => {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'animation.gif';
+                a.click();
+                URL.revokeObjectURL(url);
+            });
+
+            gif.render();
         }
 
         // Controls
@@ -611,6 +833,11 @@
             drawFrame();
         });
 
+        document.getElementById('prevFrameBtn').addEventListener('click', prevFrame);
+        document.getElementById('nextFrameBtn').addEventListener('click', nextFrame);
+        document.getElementById('downloadFrameBtn').addEventListener('click', downloadFrame);
+        document.getElementById('exportGifBtn').addEventListener('click', exportGif);
+
         document.getElementById('speedSlider').addEventListener('input', function() {
             fps = parseInt(this.value);
             document.getElementById('speedValue').textContent = fps + ' FPS';
@@ -620,6 +847,43 @@
             scale = parseFloat(this.value);
             document.getElementById('scaleValue').textContent = scale + '×';
             drawFrame();
+        });
+
+        document.getElementById('bgColorInput').addEventListener('input', function() {
+            bgColor = this.value;
+            drawFrame();
+        });
+
+        document.getElementById('showGridCheckbox').addEventListener('change', function() {
+            showGrid = this.checked;
+            drawFrame();
+        });
+
+        document.getElementById('reverseCheckbox').addEventListener('change', function() {
+            reversePlayback = this.checked;
+        });
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (!spriteSheet) return;
+
+            if (e.code === 'Space') {
+                e.preventDefault();
+                if (isPlaying) {
+                    document.getElementById('pauseBtn').click();
+                } else {
+                    document.getElementById('playBtn').click();
+                }
+            } else if (e.code === 'ArrowLeft') {
+                e.preventDefault();
+                prevFrame();
+            } else if (e.code === 'ArrowRight') {
+                e.preventDefault();
+                nextFrame();
+            } else if (e.code === 'KeyR') {
+                e.preventDefault();
+                document.getElementById('resetBtn').click();
+            }
         });
 
         // Update config inputs
