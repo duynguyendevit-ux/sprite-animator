@@ -1,0 +1,11 @@
+Features to add:
+1. Timeline view with frame thumbnails
+2. Animation presets (save/load)
+3. Onion skinning
+4. Loop count control
+5. Export as video (MP4)
+6. Export sprite sheet
+7. Export frames as ZIP
+8. Zoom controls
+9. Frame filters
+10. CSS sprite code generator
