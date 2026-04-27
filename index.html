@@ -1257,11 +1257,16 @@
             const timeline = document.getElementById('timeline');
             timeline.innerHTML = '';
 
-            for (let i = startFrame; i <= endFrame; i++) {
+            const totalFrames = cols * rows;
+            for (let i = 0; i < totalFrames; i++) {
                 const frameDiv = document.createElement('div');
                 frameDiv.className = 'timeline-frame';
                 if (i === currentFrame) {
                     frameDiv.classList.add('active');
+                }
+                // Highlight frames in current animation range
+                if (i >= startFrame && i <= endFrame) {
+                    frameDiv.style.borderColor = '#a78bfa';
                 }
 
                 const frameCanvas = document.createElement('canvas');
